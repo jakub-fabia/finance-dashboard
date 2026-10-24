@@ -1,0 +1,12 @@
+# Secrets
+.env
+banks/*.pem
+
+# Your data (FINANCE_DATA_DIR defaults to ./data) and the demo's
+data/
+demo-data/
+
+# Caches
+**/__pycache__/
+**/*.pyc
+.DS_Store

@@ -1,0 +1,23 @@
+services:
+  finance-jobs:
+    build: .
+    image: finance-jobs:latest
+    container_name: finance-jobs
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    volumes:
+      # Host directory with every data file (FINANCE_DATA_DIR in .env).
+      - ${FINANCE_DATA_DIR:-./data}:/data
+  dashboard:
+    # Static page + dashboard.json; built by finance-jobs (build_dashboard.py).
+    image: caddy:2.8.4-alpine
+    container_name: finance-dashboard
+    restart: unless-stopped
+    ports:
+      - 2718:80
+    volumes:
+      - ./dashboard/web:/srv:ro
+      - ./dashboard/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${FINANCE_DATA_DIR:-./data}:/data:ro
+networks: {}

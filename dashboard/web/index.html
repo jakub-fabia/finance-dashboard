@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Finanse</title>
+  <meta name="theme-color" content="#f8f7f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#131314" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/public-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="main" aria-busy="true">
+    <div class="col col-left">
+    <section class="balance" aria-labelledby="nw-label">
+      <div class="section-head nw-head">
+        <h2 id="nw-label" class="label">Net worth</h2>
+        <button type="button" class="icon-btn" id="hide" aria-pressed="false" aria-label="Hide amounts">
+          <svg class="eye" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z"/><circle cx="8" cy="8" r="2"/></svg>
+          <svg class="eye-off" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z"/><circle cx="8" cy="8" r="2"/><path d="m2.5 13.5 11-11"/></svg>
+        </button>
+      </div>
+      <p class="figure" id="nw-value"><span class="skeleton"></span></p>
+      <p class="nw-profit" id="nw-profit"></p>
+      <dl class="earned" id="earned" aria-label="Earned, excluding money paid in"></dl>
+      <div class="alloc" id="alloc" role="img"></div>
+      <ul class="holdings" id="holdings"></ul>
+    </section>
+
+    <section class="recent" aria-labelledby="recent-label">
+      <h2 id="recent-label" class="label">Recent transactions</h2>
+      <ul class="tx-list" id="recent"></ul>
+      <button type="button" class="text-btn" id="recent-more">Show more</button>
+    </section>
+    </div>
+
+    <div class="col col-right">
+    <section class="stocks" aria-labelledby="stocks-label">
+      <div class="section-head">
+        <h2 id="stocks-label" class="label">Stocks profit</h2>
+        <div class="seg" role="radiogroup" aria-label="Chart range" id="range"></div>
+      </div>
+      <div class="chart-legend" id="chart-legend" aria-hidden="true"></div>
+      <div class="chart" id="chart"></div>
+    </section>
+
+    <section class="spending" aria-labelledby="spend-label">
+      <div class="section-head">
+        <h2 id="spend-label" class="label">Spending</h2>
+        <div class="month-nav">
+          <button type="button" class="icon-btn" id="month-prev" aria-label="Previous month">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg>
+          </button>
+          <span id="month-name" class="month-name"></span>
+          <button type="button" class="icon-btn" id="month-next" aria-label="Next month">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
+          </button>
+        </div>
+      </div>
+      <p class="spent" id="spent"></p>
+      <p class="spent-sub" id="spent-sub"></p>
+      <ul class="cats" id="cats"></ul>
+      <p class="hint" id="cats-hint"></p>
+    </section>
+
+    <section class="uncat" aria-labelledby="uncat-label">
+      <h2 id="uncat-label" class="label">Uncategorised</h2>
+      <details id="uncat-details">
+        <summary id="uncat-summary"></summary>
+        <ul class="tx-list" id="uncat"></ul>
+        <p class="hint">Add rules to category_rules.csv (see docs/SETUP.md) to sort these.</p>
+      </details>
+    </section>
+    </div>
+
+    <footer class="fresh" aria-label="Data freshness">
+      <p id="fresh"></p>
+      <p class="credit">Chart by <a href="https://www.tradingview.com/lightweight-charts/" rel="noopener">TradingView Lightweight Charts</a></p>
+    </footer>
+  </main>
+
+  <script src="vendor/lightweight-charts.standalone.production.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

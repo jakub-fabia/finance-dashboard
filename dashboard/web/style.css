@@ -1,0 +1,428 @@
+@font-face {
+  font-family: "Public Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(fonts/public-sans-latin-ext-wght-normal.woff2) format("woff2-variations");
+  unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Public Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(fonts/public-sans-latin-wght-normal.woff2) format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Neutral paper (light) and near-black (dark). The only hues on the page
+   are the holding colours and the spending-category slots. */
+:root {
+  color-scheme: light;
+  --ground: #f8f7f4;
+  --ink: #18181b;
+  --ink-2: #4a4a52;
+  --ink-3: #66666e;
+  --rule: #e2e0db;
+  --rule-strong: #b3b1ab;
+  --bar: #3f3f46;
+  --tick: #18181b;
+  --tint: rgba(24, 24, 27, 0.05);
+  --focus: #2a78d6;
+  --select: #d6e4f7;
+  --h-stocks: #2a78d6;
+  --h-bonds: #eb6834;
+  --c-green: #1baf7a;
+  --c-amber: #eda100;
+  /* Categorical slots 1–4 are the holding hues; 5–8 follow (fixed categorical order). */
+  --s1: var(--h-stocks);
+  --s2: var(--h-bonds);
+  --s3: var(--c-green);
+  --s4: var(--c-amber);
+  --s5: #e87ba4;
+  --s6: #008300;
+  --s7: #6250d6;
+  --s8: #e34948;
+
+  --fs: 0.9375rem;   /* the small size: everything that isn't a headline figure */
+  --fl: 2.25rem;     /* the large size: headline figures only */
+  --pad: 16px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #131314;
+    --ink: #ececee;
+    --ink-2: #b9b9c0;
+    --ink-3: #8f8f97;
+    --rule: #2a2a2e;
+    --rule-strong: #4c4c53;
+    --bar: #a8a8b0;
+    --tick: #ececee;
+    --tint: rgba(236, 236, 238, 0.06);
+    --focus: #3987e5;
+    --select: #23364f;
+    --h-stocks: #3987e5;
+    --h-bonds: #d95926;
+    --c-green: #199e70;
+    --c-amber: #c98500;
+    --s5: #d55181;
+    --s6: #008300;
+    --s7: #9085e9;
+    --s8: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #131314;
+  --ink: #ececee;
+  --ink-2: #b9b9c0;
+  --ink-3: #8f8f97;
+  --rule: #2a2a2e;
+  --rule-strong: #4c4c53;
+  --bar: #a8a8b0;
+  --tick: #ececee;
+  --tint: rgba(236, 236, 238, 0.06);
+  --focus: #3987e5;
+  --select: #23364f;
+  --h-stocks: #3987e5;
+  --h-bonds: #d95926;
+  --c-green: #199e70;
+  --c-amber: #c98500;
+  --s5: #d55181;
+  --s6: #008300;
+  --s7: #9085e9;
+  --s8: #e66767;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 var(--fs) / 1.45 "Public Sans", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  min-height: 100dvh;
+}
+::selection { background: var(--select); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+h1, h2, p, ul, dl, dd { margin: 0; padding: 0; }
+ul { list-style: none; }
+button { font: inherit; color: inherit; }
+
+/* --- Shell ------------------------------------------------------------------ */
+
+.fresh span.stale {
+  color: var(--ink-2);
+  font-weight: 600;
+  text-decoration: underline 1.5px dashed;
+  text-underline-offset: 4px;
+}
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) var(--pad) calc(32px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 56px;
+}
+main section, main > footer {
+  padding: 24px 0;
+  border-top: 1px solid var(--rule);
+}
+.balance { border-top: 0; padding-top: 28px; }
+
+/* Two columns on desktop; on a phone the columns dissolve and `order` keeps
+   the reading path: balance, stocks, spending, recent, uncategorised. */
+.col { display: contents; }
+.balance { order: 1; }
+.stocks { order: 2; }
+.spending { order: 3; }
+.recent { order: 4; }
+.uncat { order: 5; }
+.fresh { order: 6; }
+
+@media (min-width: 960px) {
+  :root { --pad: 32px; }
+  main {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: start;
+    padding-top: 12px;
+  }
+  .col { display: block; min-width: 0; }
+  .col > section:first-child { border-top: 0; }
+  .fresh { grid-column: 1 / -1; }
+}
+
+.label { font-size: var(--fs); font-weight: 600; color: var(--ink-3); }
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.hint { color: var(--ink-3); margin-top: 14px; }
+
+.figure, .spent {
+  font-size: var(--fl);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.figure { margin-top: 4px; }
+.figure .cur, .spent .cur { font-weight: 500; color: var(--ink-3); }
+
+/* --- Rows: name / amount, then meta / secondary ---------------------------- */
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  min-width: 0;
+  text-align: left;
+}
+.r-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r-amt { font-weight: 700; text-align: right; white-space: nowrap; }
+.r-meta { color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r-side { color: var(--ink-2); text-align: right; white-space: nowrap; }
+
+/* --- Balance ---------------------------------------------------------------- */
+
+.nw-profit { color: var(--ink-2); margin-top: 6px; }
+
+.earned {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 18px 0 22px;
+  border-block: 1px solid var(--rule);
+}
+.earned div { padding: 10px 0 10px 12px; border-left: 1px solid var(--rule); }
+.earned div:first-child { padding-left: 0; border-left: 0; }
+/* A year's figure doesn't fit a quarter of a phone: 2 × 2 there. */
+@media (max-width: 459px) {
+  .earned { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .earned div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .earned div:nth-child(n+3) { border-top: 1px solid var(--rule); }
+}
+.earned dt { color: var(--ink-3); }
+.earned dd { font-weight: 700; white-space: nowrap; }
+
+.alloc {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  margin-bottom: 8px;
+}
+.alloc span { display: block; min-width: 4px; border-radius: 2px; }
+
+.holdings > li { border-top: 1px solid var(--rule); }
+.holdings > li:first-child { border-top: 0; }
+.h-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) 14px;
+  column-gap: 12px;
+  align-items: start;
+  padding: 11px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+button.h-row { cursor: pointer; }
+button.h-row:hover .r-name { text-decoration: underline; text-underline-offset: 3px; }
+.h-row .row { row-gap: 1px; }
+.h-row .r-name { font-weight: 700; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; margin-top: 6px; }
+.chev {
+  width: 8px;
+  height: 8px;
+  margin: 7px 0 0 3px;
+  border-right: 2px solid var(--ink-3);
+  border-bottom: 2px solid var(--ink-3);
+  transform: rotate(45deg);
+  transition: transform 150ms var(--ease);
+}
+[aria-expanded="true"] > .chev { transform: rotate(225deg); margin-top: 10px; }
+
+.h-detail { margin: 0 0 14px 22px; }
+.group { padding: 4px 0 8px; }
+.group + .group { border-top: 1px solid var(--rule); padding-top: 10px; }
+.group .row { padding: 5px 0; }
+.group .g-head .r-name, .group .g-head .r-amt { font-weight: 700; }
+.group .row:not(.g-head):not(.g-foot) .r-name { font-weight: 500; }
+.group .g-foot .r-name { font-weight: 500; color: var(--ink-2); }
+.group .g-foot .r-amt { font-weight: 600; }
+.group .soon .r-meta { color: var(--ink); font-weight: 600; }
+
+/* --- Segmented control ------------------------------------------------------ */
+
+.seg {
+  display: inline-flex;
+  background: var(--tint);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+.seg button {
+  border: 0;
+  background: transparent;
+  padding: 5px 10px;
+  min-width: 44px;
+  min-height: 32px;
+  border-radius: 6px;
+  font-weight: 600;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+.seg button:hover { color: var(--ink); }
+.seg button[aria-checked="true"] { background: var(--ink); color: var(--ground); }
+
+/* --- Stocks chart ----------------------------------------------------------- */
+
+.chart { height: 240px; }
+@media (min-width: 960px) { .chart { height: 300px; } }
+/* Above the plot, in flow: never over a gridline. */
+.chart-legend { min-height: 2.7em; margin-bottom: 6px; line-height: 1.35; }
+.chart-legend .l-profit { font-weight: 700; }
+.chart-legend .l-meta { color: var(--ink-3); }
+
+/* --- Spending --------------------------------------------------------------- */
+
+.month-nav { display: flex; align-items: center; gap: 2px; }
+.month-name { min-width: 8.5em; text-align: center; font-weight: 600; }
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--tint);
+  cursor: pointer;
+}
+.icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn:hover { background: color-mix(in srgb, var(--ink) 12%, transparent); }
+.icon-btn:disabled { opacity: 0.35; cursor: default; }
+
+.spent-sub { color: var(--ink-2); margin: 6px 0 16px; }
+
+.cats > li { border-top: 1px solid var(--rule); }
+.cats > li:first-child { border-top: 0; }
+.cat-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(6.5em, 9em) minmax(0, 1fr) 5.5em;
+  column-gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.cat-row:hover .cat-name { text-decoration: underline; text-underline-offset: 3px; }
+.cat-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-name::first-letter { text-transform: uppercase; }
+.cat-track { position: relative; height: 8px; }
+.cat-bar { position: absolute; inset: 0 auto 0 0; background: var(--bar); border-radius: 0 3px 3px 0; }
+.cat-prev { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--tick); border-radius: 1px; }
+.cat-amt { font-weight: 700; text-align: right; white-space: nowrap; }
+.cat-tx { padding: 0 0 12px; }
+.cat-cmp { color: var(--ink-3); padding-bottom: 4px; }
+
+/* --- Transactions ----------------------------------------------------------- */
+
+.tx-list li { padding: 9px 0; border-top: 1px solid var(--rule); }
+.tx-list li:first-child { border-top: 0; }
+.cat-tx .tx-list li { padding: 7px 0; }
+.recent .tx-list { margin-top: 12px; }
+
+.text-btn {
+  margin-top: 10px;
+  padding: 8px 0;
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.text-btn[hidden] { display: none; }
+
+details { margin-top: 8px; }
+summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding: 6px 0;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+summary::-webkit-details-marker { display: none; }
+summary::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 150ms var(--ease);
+}
+details[open] summary::before { transform: rotate(45deg); }
+
+/* --- Freshness -------------------------------------------------------------- */
+
+.fresh { color: var(--ink-3); }
+#fresh { display: flex; flex-wrap: wrap; gap: 6px 28px; }
+.credit { margin-top: 14px; }
+.credit a { color: inherit; text-underline-offset: 3px; }
+
+/* --- States ----------------------------------------------------------------- */
+
+.skeleton {
+  display: inline-block;
+  width: 8.5em;
+  height: 0.9em;
+  border-radius: 4px;
+  background: var(--tint);
+}
+.error { padding: 32px 0; }
+.error p + p { color: var(--ink-3); margin-top: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+.cat-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: 0.05em;
+}
+.group .g-head .share { font-weight: 500; color: var(--ink-3); margin-left: 4px; }
+
+/* --- Hidden amounts ----------------------------------------------------------
+   The digits are already replaced by a fixed mask (app.js num()); the blur is
+   only how it looks. */
+.nw-head { margin-bottom: 0; }
+#hide .eye-off { display: none; }
+#hide[aria-pressed="true"] .eye { display: none; }
+#hide[aria-pressed="true"] .eye-off { display: block; }
+#hide[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
+.hide-amounts :is(.figure, .spent, .r-amt, .cat-amt, .earned dd, .l-profit) {
+  filter: blur(5px);
+  user-select: none;
+}
