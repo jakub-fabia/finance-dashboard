@@ -4,8 +4,9 @@
 Every number, name and IBAN here is invented (fixed random seed, so the demo
 looks the same every run). It produces what the jobs would have written —
 xtb_rebuilt.csv, xtb_holdings.csv, transactions.csv, bonds.csv, cpi.csv,
-nbp_rates.csv — plus category_rules.csv and
-tx_overrides.csv, so build_dashboard.py can run on it:
+nbp_rates.csv — plus category_rules.csv, tx_overrides.csv and a savings
+account through plugins/examples/fixed_rate_savings.py (holdings/savings.csv),
+so build_dashboard.py can run on it:
 
   python3 demo/make_demo_data.py demo-data
   DATA_DIR=demo-data python3 dashboard/build_dashboard.py     # needs pandas
@@ -15,7 +16,9 @@ Stdlib only. Writes are atomic (tmp → replace), like the real jobs.
 """
 import csv
 import math
+import os
 import random
+import subprocess
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -45,7 +48,7 @@ def months_back(d: date, n: int) -> date:
 # --- Stocks (what xtb/rebuild_xtb.py writes) -----------------------------------
 
 def stocks(out: Path, now: datetime) -> None:
-    start = (now - timedelta(days=730)).replace(minute=0, second=0, microsecond=0)
+    start = (now - timedelta(days=1460)).replace(minute=0, second=0, microsecond=0)
     times, t = [], start
     while t < now:
         times.append(t)
@@ -66,7 +69,7 @@ def stocks(out: Path, now: datetime) -> None:
             price *= math.exp(rng.gauss(0.00006 * step, 0.0035 * math.sqrt(step)))
         if (t.year, t.month) != last_month and t.day >= 10:
             last_month = (t.year, t.month)
-            amount = 2000.0 if deposits < 20000 else 1500.0
+            amount = 4000.0
             deposits += amount
             units += amount / price
         value = units * price
@@ -74,23 +77,22 @@ def stocks(out: Path, now: datetime) -> None:
     write(out / "xtb_rebuilt.csv",
           ["captured_at", "after_export", "total_pln", "net_deposits_pln", "profit_pln", "pending_pln"], rows)
 
-    # Split today's value over three accounts and instruments.
+    # Split today's value over two accounts and three instruments.
     total, profit = float(rows[-1][2]), float(rows[-1][4])
     plan = [  # account, kind, ticker, name, currency, local price, share, open gain
-        ("10000001", "IKE", "VWCE.DE", "Vanguard FTSE All-World UCITS ETF (USD) Accumulating", "EUR", 131.40, 0.55, 0.16),
-        ("10000002", "EUR", "SXR8.DE", "iShares Core S&P 500 UCITS ETF (Acc)", "EUR", 612.20, 0.33, 0.21),
-        ("10000003", "PLN", "ETFBW20TR.PL", "Beta ETF WIG20TR", "PLN", 118.50, 0.10, 0.07),
+        ("10000001", "PLN", "ETFBM40TR.PL", "Beta ETF mWIG40TR", "PLN", 132.80, 0.31, 0.24),
+        ("10000001", "PLN", "ETFBSPXPL.PL", "Beta ETF S&P 500 PLN-Hedged", "PLN", 245.10, 0.21, 0.33),
+        ("10000002", "USD", "VTI.US", "Vanguard Total Stock Market ETF", "USD", 286.40, 0.45, 0.29),
     ]
-    eur = 4.27
+    fx = {"PLN": 1.0, "USD": 3.94}
     hold = []
     for acct, kind, ticker, name, ccy, px, share, gain in plan:
         value = total * share
-        qty = value / (px * (eur if ccy == "EUR" else 1))
+        qty = value / (px * fx[ccy])
         hold.append([acct, kind, ticker, name, f"{qty:.4f}", f"{px:.4f}", ccy, f"{value:.2f}", f"{value / (1 + gain):.2f}"])
     cash = total - sum(total * p[6] for p in plan)
-    for acct, kind, *_ in plan:
-        hold.append([acct, kind, "CASH", "PLN" if kind != "EUR" else "EUR", "0", "1", "PLN",
-                     f"{cash / 3:.2f}", f"{cash / 3:.2f}"])
+    for acct, kind in (("10000001", "PLN"), ("10000002", "USD")):
+        hold.append([acct, kind, "CASH", kind, "0", "1", kind, f"{cash / 2:.2f}", f"{cash / 2:.2f}"])
     write(out / "xtb_holdings.csv",
           ["account", "kind", "ticker", "name", "qty", "price", "currency", "value_pln", "cost_pln"], hold)
     print(f"stocks: {len(rows)} points, value {total:,.2f}, profit {profit:,.2f}")
@@ -105,11 +107,9 @@ def bonds(out: Path, today: date) -> None:
 
     rows = []
     for back, series, months, nominal, rate, margin in (
-        (30, "EDO", 120, 10000, 0.0680, 0.0175),
-        (18, "EDO", 120, 6000, 0.0640, 0.0175),
-        (26, "TOS", 36, 4000, 0.0610, ""),
-        (14, "TOS", 36, 5000, 0.0570, ""),
-        (5, "TOS", 36, 3000, 0.0520, ""),
+        (40, "COI", 48, 20000, 0.0650, 0.0125),
+        (22, "COI", 48, 12000, 0.0600, 0.0125),
+        (9, "DOR", 24, 8000, 0.0560, 0.0015),
     ):
         bought = months_back(today, back).replace(day=rng.randint(2, 27))
         rows.append([name(series, bought, months), nominal, rate, margin])
@@ -173,11 +173,11 @@ def transactions(out: Path, today: date) -> None:
             break
         day = lambda x: date(d.year, d.month, x)
         if 10 in month_days:
-            tx(day(10), "CRDT", rng.uniform(8800, 9400), "ME", "ACME SP. Z O.O.", "Salary")
+            tx(day(10), "CRDT", rng.uniform(14200, 15100), "ME", "ACME SP. Z O.O.", "Salary")
         if 1 in month_days:
-            tx(day(1), "DBIT", 2800, "JOHN LANDLORD", "ME", "RENT apartment")
+            tx(day(1), "DBIT", 4300, "JOHN LANDLORD", "ME", "RENT apartment")
         if 11 in month_days:
-            tx(day(11), "DBIT", 1500, "BROKER XYZ", "ME", "Deposit")
+            tx(day(11), "DBIT", 4000, "BROKER XYZ", "ME", "Deposit")
         for cat, (names, count, lo, hi) in MERCHANTS.items():
             k = count if cat != "subscriptions" else len(names)
             for i in range(k):
@@ -199,6 +199,15 @@ def transactions(out: Path, today: date) -> None:
     print(f"transactions: {len(rows)}")
 
 
+def plugin(out: Path, today: date) -> None:
+    """A savings account through the example plugin, to show a plugin holding."""
+    rows = [[f"{months_back(today, 20)}", "25000"]]
+    rows += [[f"{months_back(today, n).replace(day=15)}", "2500"] for n in range(19, 0, -1)]
+    write(out / "savings_deposits.csv", ["date", "amount"], rows)
+    script = Path(__file__).resolve().parent.parent / "plugins" / "examples" / "fixed_rate_savings.py"
+    subprocess.run([sys.executable, str(script)], check=True, env={**os.environ, "DATA_DIR": str(out)})
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(__doc__)
@@ -209,6 +218,7 @@ def main() -> int:
     stocks(out, now)
     bonds(out, now.date())
     transactions(out, now.date())
+    plugin(out, now.date())
     print(f"fake data → {out.resolve()}")
     return 0
 

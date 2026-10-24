@@ -13,12 +13,14 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    DATA_DIR=/data \
     TZ=Europe/Warsaw \
     \
     BANKS_CRON_SCHEDULE="0 6 * * *" \
     CPI_CRON_SCHEDULE="0 6 20 * *" \
     NBP_CRON_SCHEDULE="0 7 * * 1" \
     XTB_REBUILD_CRON_SCHEDULE="2,17,32,47 9-17 * * 1-5;10 18,23 * * 1-5" \
+    PLUGINS_CRON_SCHEDULE="5 0 * * *" \
     \
     OUTPUT_PATH=/data/transactions.csv \
     XTB_EXPORT_DIR=/data/XTB_exports \

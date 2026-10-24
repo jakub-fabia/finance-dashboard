@@ -12,6 +12,10 @@ DATA_DIR:
   category_rules.csv   `category;field;pattern` — first match wins; category
                        `exclude` drops capital moves (broker, funds)
   tx_overrides.csv     `transaction_id;category` — pins one transaction
+  own_accounts.csv     optional `iban;note` — your other accounts: transfers
+                       to/from them are not spending or income
+  holdings/*.csv       your own holdings, written by scripts in plugins/
+                       (see plugins/README.md): `date;value;profit`
 
 How bonds accrue and how transactions are sorted is described in
 docs/SETUP.md. Write is atomic (tmp → replace).
@@ -288,7 +292,7 @@ def load_transactions():
     own_ibans = {
         deb[out & bank.eq(b) & deb.ne("")].mode().iat[0]
         for b in bank.unique() if (out & bank.eq(b) & deb.ne("")).any()
-    }
+    } | own_accounts()
     counterparty = cred.where(out, deb)
     own_transfer = counterparty.isin(own_ibans) | tx["remittance_information"].fillna("").str.contains(
         r"przelew\s+własny|internal\s+transfer", case=False, regex=True)
@@ -364,6 +368,56 @@ def uncategorized(ext: pd.DataFrame) -> list[dict]:
     return [{"who": w, "total": r2(t), "count": int(c)} for w, t, c in zip(u["creditor_name"], u["total"], u["count"])]
 
 
+def own_accounts() -> set[str]:
+    path = DATA_DIR / "own_accounts.csv"
+    if not path.exists():
+        return set()
+    o = pd.read_csv(path, sep=";", dtype=str, comment="#")
+    return {i.replace(" ", "").upper() for i in o["iban"].dropna()}
+
+
+# --- Your own holdings (plugins) ---------------------------------------------------
+
+HOLDINGS_DIR = DATA_DIR / "holdings"
+# Colour slots on the page: stocks 1, bonds 2, plugin holdings 3–8 in name
+# order (the colour follows the holding, not its size); any more are grey.
+SLOTS = 8
+
+
+def load_plugin_holdings() -> dict[str, tuple[str, pd.DataFrame]]:
+    """holdings/<key>.csv → {key: (label, rows by date)}. Each file is one row
+    per day, `date;value;profit` (profit = earned so far, so value − profit is
+    what went in), with an optional first line `# label: Name`."""
+    out = {}
+    if not HOLDINGS_DIR.is_dir():
+        return out
+    for path in sorted(HOLDINGS_DIR.glob("*.csv")):
+        key = path.stem.lower()
+        if key in ("stocks", "bonds"):
+            log(f"{path.name}: name taken by a built-in holding, skipped")
+            continue
+        with path.open(encoding="utf-8") as f:
+            first = f.readline()
+        label = (first.split(":", 1)[1].strip() if first.lower().startswith("# label:")
+                 else key.replace("_", " ").title())
+        try:
+            df = pd.read_csv(path, sep=";", comment="#", parse_dates=["date"]).set_index("date").sort_index()
+            df = df[["value", "profit"]].astype(float)
+        except (ValueError, KeyError) as e:
+            log(f"{path.name}: skipped ({e})")
+            continue
+        if not df.empty:
+            out[key] = (label, df)
+    return out
+
+
+def plugin_at(df: pd.DataFrame, day: pd.Timestamp) -> tuple[float, float]:
+    """(value, profit) on `day`; before the series starts, its first row
+    (nothing earned yet)."""
+    row = df.loc[:day].iloc[-1] if day >= df.index[0] else df.iloc[0]
+    return float(row["value"]), float(row["profit"])
+
+
 # --- Assemble ------------------------------------------------------------------
 
 def main() -> int:
@@ -373,6 +427,7 @@ def main() -> int:
     xtb = load_xtb()
     bonds, cpi_yoy, nbp_rate = load_bonds()
     ext = load_transactions()
+    plugins = load_plugin_holdings()
 
     xtb_by_time = xtb.set_index("captured_at")
 
@@ -384,6 +439,7 @@ def main() -> int:
             "stocks": (float(x["total_pln"]) if x is not None else 0.0,
                        float(x["profit_pln"]) if x is not None else 0.0),
             "bonds": (float(b["current_value_pln"].sum()), float(b["accrued_pln"].sum())),
+            **{key: plugin_at(df, day) for key, (_, df) in plugins.items()},
         }
 
     snaps = {key: snapshot(today - pd.Timedelta(days=days), now - pd.Timedelta(days=days))
@@ -395,13 +451,17 @@ def main() -> int:
     costs = {
         "stocks": float(xtb_last["net_deposits_pln"]),
         "bonds": float(bonds_now["nominal_pln"].sum()) if len(bonds_now) else 0.0,
+        **{key: cur[key][0] - cur[key][1] for key in plugins},
     }
-    labels = {"stocks": "Stocks", "bonds": "Bonds"}
+    labels = {"stocks": "Stocks", "bonds": "Bonds", **{key: label for key, (label, _) in plugins.items()}}
+    slots = {key: i + 1 if i < SLOTS else 0 for i, key in enumerate(labels)}
+    # Built-ins first, then your own holdings, largest first.
+    order = ["stocks", "bonds", *sorted(plugins, key=lambda k: -cur[k][0])]
     holdings = [{
-        "key": key, "label": labels[key],
+        "key": key, "label": labels[key], "slot": slots[key],
         "value": r2(cur[key][0]), "profit": r2(cur[key][1]), "cost": r2(costs[key]),
         "profit_pct": r2(cur[key][1] / costs[key] * 100) if costs[key] else 0.0,
-    } for key in labels]
+    } for key in order]
 
     changes = {}
     for key in ("1d", "7d", "30d", "365d"):

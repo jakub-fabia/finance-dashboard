@@ -6,6 +6,17 @@ banks/*.pem
 data/
 demo-data/
 
+# Your own holding scripts (plugins/README.md) — only the docs and examples are shared
+plugins/*
+!plugins/README.md
+!plugins/examples/
+
+# Personal notes and tooling
+CLAUDE.local.md
+PRODUCT.md
+.claude/
+.impeccable/
+
 # Caches
 **/__pycache__/
 **/*.pyc

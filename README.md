@@ -15,6 +15,7 @@ a file you export by hand:
 | Bank transactions (any Polish bank Enable Banking supports) | [Enable Banking](https://enablebanking.com) PSD2 API | `banks/fetch_transactions.py` |
 | XTB stocks / ETFs | xStation 5 history export (`.xlsx`) + Yahoo Finance prices | `xtb/rebuild_xtb.py` |
 | Treasury bonds | a small `bonds.csv` you keep, GUS CPI + NBP reference rate | `gus-cpi/`, `nbp-rates/` |
+| Anything else (savings, deposits, …) | your own scripts, kept out of git | `plugins/` |
 
 Two containers: **`finance-jobs`** runs every job on a schedule (supercronic)
 and rebuilds `dashboard.json` after each one, and **`dashboard`** (Caddy) serves

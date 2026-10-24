@@ -13,6 +13,8 @@ separator.
 | `bonds.csv` | you | yes |
 | `cpi.csv`, `nbp_rates.csv` | CPI / NBP jobs | no |
 | `category_rules.csv`, `tx_overrides.csv` | you | yes |
+| `own_accounts.csv` | you (optional) | yes |
+| `holdings/*.csv` | your plugins | no |
 | `dashboard.json` | dashboard builder (after every job) | no |
 
 Every source is optional: a holding with no data shows as 0, and spending is
@@ -160,7 +162,16 @@ CPI (GUS) and the NBP rate are fetched by their own jobs: monthly and weekly
 by default, or `run-cpi` / `run-nbp`. `CPI_START_YEAR` must cover your oldest
 indexed bond.
 
-## 5. Spending categories
+## 5. Your own holdings (plugins)
+
+Savings accounts, deposits, pension funds or anything else you want in net
+worth: write a small script that outputs one CSV per holding
+(`date;value;profit`, one row per day) and put it in `plugins/`. It runs
+after every bank fetch and daily, and each file becomes a row next to Stocks
+and Bonds. Your scripts are gitignored. The contract and a ready-made example
+(a fixed-rate savings account) are in **[plugins/README.md](../plugins/README.md)**.
+
+## 6. Spending categories
 
 `category_rules.csv` sorts bank transactions. The first matching row wins:
 
@@ -190,7 +201,7 @@ leisure, transportation, subscriptions, shopping and travel (`CAT_SLOTS` in
 After editing either file:
 `docker compose run --rm finance-jobs run-dashboard`.
 
-## 6. Day to day
+## 7. Day to day
 
 - **Page:** `http://<server>:2718`. Add it to your phone's home screen.
   Footer dates show when each source last updated, and a dashed underline
@@ -198,7 +209,7 @@ After editing either file:
 - **After trading on XTB:** export again (section 3).
 - **Every few months:** renew the bank consent (section 2, step 4).
 - **One-off runs:** `docker compose run --rm finance-jobs <mode>`, where mode is
-  `run-banks`, `run-xtb-rebuild`, `run-cpi`, `run-nbp` or
+  `run-banks`, `run-xtb-rebuild`, `run-cpi`, `run-nbp`, `run-plugins` or
   `run-dashboard`. Each job is followed by a dashboard rebuild.
 - **Schedules:** `*_CRON_SCHEDULE` variables in `.env`, Europe/Warsaw time.
   Separate several cron expressions with `;`.

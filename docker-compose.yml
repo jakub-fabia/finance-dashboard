@@ -9,6 +9,8 @@ services:
     volumes:
       # Host directory with every data file (FINANCE_DATA_DIR in .env).
       - ${FINANCE_DATA_DIR:-./data}:/data
+      # Your own holding scripts (plugins/README.md); read live, no rebuild.
+      - ./plugins:/app/plugins:ro
   dashboard:
     # Static page + dashboard.json; built by finance-jobs (build_dashboard.py).
     image: caddy:2.8.4-alpine

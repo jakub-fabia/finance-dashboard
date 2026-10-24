@@ -2,7 +2,8 @@
 // beyond presentation happens here.
 "use strict";
 
-const HOLDING_VARS = { stocks: "--h-stocks", bonds: "--h-bonds" };
+// Holdings carry their colour slot (dashboard.json); 0 = more holdings than hues.
+const holdingColor = (h) => h.slot ? `var(--s${h.slot})` : "var(--bar)";
 const PERIODS = [["1d", "Day"], ["7d", "Week"], ["30d", "Month"], ["365d", "Year"]];
 // Spending categories → categorical slot (fixed: the colour follows the
 // category, never its rank). Eight hues; the small ones stay neutral.
@@ -117,7 +118,7 @@ function renderBalance() {
   for (const h of parts) {
     const s = el("span");
     s.style.flex = String(h.value);
-    s.style.background = `var(${HOLDING_VARS[h.key]})`;
+    s.style.background = holdingColor(h);
     s.title = `${h.label}: ${money(h.value, 0)} (${NF0.format(h.value / nw.value * 100)}%)`;
     alloc.append(s);
   }
@@ -130,7 +131,7 @@ function renderBalance() {
     const open = state.openHolding === h.key;
     const head = el(details[h.key] ? "button" : "div", "h-row");
     const sw = el("span", "swatch");
-    sw.style.background = `var(${HOLDING_VARS[h.key]})`;
+    sw.style.background = holdingColor(h);
     head.append(sw, row("", h.label, money(h.value, 0), "",
       h.profit ? `${signedShort(h.profit)} · ${pct(h.profit_pct)}` : "—"));
     if (details[h.key]) {
