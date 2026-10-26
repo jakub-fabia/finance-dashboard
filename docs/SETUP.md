@@ -14,6 +14,7 @@ separator.
 | `cpi.csv`, `nbp_rates.csv` | CPI / NBP jobs | no |
 | `category_rules.csv`, `tx_overrides.csv` | you | yes |
 | `own_accounts.csv` | you (optional) | yes |
+| `yahoo_overrides.csv` | you (optional) | yes |
 | `holdings/*.csv` | your plugins | no |
 | `dashboard.json` | dashboard builder (after every job) | no |
 
@@ -122,7 +123,10 @@ Notes:
 - **Symbols:** XTB's suffix maps to Yahoo's (`YAHOO_SUFFIX`), with
   `YAHOO_OVERRIDE` for instruments Yahoo lists under a different code. Each run
   compares XTB's fill prices with Yahoo and logs `CHECK MAPPING` when a ticker
-  is more than 3% off. Add an override when you see it.
+  is more than 3% off. Add an override when you see it, or when the run stops
+  with "Yahoo has no …": a row `xtb_ticker;yahoo_symbol` in
+  `yahoo_overrides.csv` (header included), e.g. `ABCD.DE;WXYZ.DE`. Keeping
+  them there rather than in the code keeps your tickers out of git.
 - Positions in a currency other than the account's are valued at market
   −0.5%, matching XTB's conversion fee. CFDs only count realised cash.
 - Every run recomputes the whole history (a few Yahoo requests per

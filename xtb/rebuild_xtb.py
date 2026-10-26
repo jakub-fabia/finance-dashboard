@@ -38,6 +38,8 @@ EXPORT_DIR (default $XTB_EXPORT_DIR) is searched recursively for
 `<CCY|IKE>_<account>_<from>_<to>.xlsx`; drop each new full-history export in
 there (older ones of the same account can stay — ops are deduped by ID).
 --out defaults to $XTB_REBUILT_FILE, --bank-tx to transactions.csv next to it.
+Optional yahoo_overrides.csv next to --out (`xtb_ticker;yahoo_symbol`) adds
+to YAHOO_OVERRIDE, so the tickers you hold stay out of the code.
 One row per hour (Europe/Warsaw), every 15 minutes of weekday 9:00–18:00 in
 the last 60 days, plus a final row at now:
   captured_at;after_export;total_pln;net_deposits_pln;profit_pln;pending_pln;
@@ -81,7 +83,8 @@ EXTERNAL_TYPES = {"Deposit", "Withdrawal"}
 YAHOO_SUFFIX = {"DE": ".DE", "FR": ".PA", "UK": ".L", "PL": ".WA", "NL": ".AS", "US": ""}
 # Instruments Yahoo lists under another code. A different-currency listing of
 # the same fund is fine — prices go through FX either way.
-# Add one when a run logs CHECK MAPPING, e.g. "ABCD.DE": "WXYZ.DE".
+# Add one when a run logs CHECK MAPPING or a ticker 404s, e.g. "ABCD.DE": "WXYZ.DE"
+# — here or, to keep your tickers out of the code, in yahoo_overrides.csv.
 YAHOO_OVERRIDE: dict[str, str] = {}
 # Currency XTB quotes an instrument in, by suffix (.UK lines vary — trust Yahoo).
 XTB_QUOTE_CCY = {"DE": "EUR", "FR": "EUR", "NL": "EUR", "PL": "PLN", "US": "USD"}
@@ -292,7 +295,27 @@ def fetch_prices(ops: list[Op], start: date):
     for o in ops:
         held[o.ticker] += o.qty
     recent = {o.ticker for o in ops if o.time >= since} | {t for t, q in held.items() if q > 1e-6}
-    return {t: yahoo_series(yahoo_symbol(t), start, fine=t in recent) for t in tickers}
+    prices = {}
+    for t in tickers:
+        try:
+            prices[t] = yahoo_series(yahoo_symbol(t), start, fine=t in recent)
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+            raise SystemExit(f"[xtb-rebuild] Yahoo has no {yahoo_symbol(t)} (for {t}) — add "
+                             f"`{t};<yahoo symbol>` to yahoo_overrides.csv") from None
+    return prices
+
+
+def load_overrides(path: Path) -> None:
+    """yahoo_overrides.csv (`xtb_ticker;yahoo_symbol`, # comments) → YAHOO_OVERRIDE."""
+    if not path.exists():
+        return
+    with path.open(newline="", encoding="utf-8") as f:
+        rows = csv.DictReader((l for l in f if not l.lstrip().startswith("#")), delimiter=";")
+        for r in rows:
+            if (r.get("xtb_ticker") or "").strip() and (r.get("yahoo_symbol") or "").strip():
+                YAHOO_OVERRIDE[r["xtb_ticker"].strip()] = r["yahoo_symbol"].strip()
 
 
 def adjust_for_splits(ops: list[Op], prices) -> list[Op]:
@@ -501,6 +524,7 @@ def main() -> int:
         log("no output path — set XTB_REBUILT_FILE or pass --out")
         return 1
     out = Path(args.out)
+    load_overrides(out.parent / "yahoo_overrides.csv")
 
     accounts, kinds, ops, cutoff = load_ledger(Path(args.export_dir))
     if not ops:
